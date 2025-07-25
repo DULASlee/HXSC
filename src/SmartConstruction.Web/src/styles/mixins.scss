@@ -1,0 +1,352 @@
+// =============================================
+// SCSS混入 - 通用样式混入
+// =============================================
+
+// 清除浮动
+@mixin clearfix {
+  &::after {
+    content: "";
+    display: table;
+    clear: both;
+  }
+}
+
+// 文本省略
+@mixin text-ellipsis($lines: 1) {
+  @if $lines == 1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  } @else {
+    display: -webkit-box;
+    -webkit-line-clamp: $lines;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+// 居中对齐
+@mixin center($type: both) {
+  position: absolute;
+  
+  @if $type == both {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  } @else if $type == horizontal {
+    left: 50%;
+    transform: translateX(-50%);
+  } @else if $type == vertical {
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}
+
+// Flex布局
+@mixin flex($direction: row, $justify: flex-start, $align: stretch, $wrap: nowrap) {
+  display: flex;
+  flex-direction: $direction;
+  justify-content: $justify;
+  align-items: $align;
+  flex-wrap: $wrap;
+}
+
+// Flex居中
+@mixin flex-center {
+  @include flex(row, center, center);
+}
+
+// 按钮基础样式
+@mixin button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  height: 32px;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--text-color-regular);
+  text-align: center;
+  box-sizing: border-box;
+  outline: none;
+  transition: var(--transition-base);
+  font-weight: var(--font-weight-primary);
+  user-select: none;
+  vertical-align: middle;
+  -webkit-appearance: none;
+  background-color: var(--fill-color-blank);
+  border: 1px solid var(--border-color-base);
+  border-radius: var(--border-radius-base);
+  padding: 8px 15px;
+  font-size: var(--font-size-base);
+  
+  &:hover,
+  &:focus {
+    color: var(--primary-color);
+    border-color: var(--primary-light);
+    background-color: var(--primary-color-light-9, #ecf5ff);
+  }
+  
+  &:active {
+    color: var(--primary-dark);
+    border-color: var(--primary-dark);
+  }
+  
+  &.is-disabled,
+  &:disabled {
+    color: var(--text-color-placeholder);
+    cursor: not-allowed;
+    background-image: none;
+    background-color: var(--fill-color-blank);
+    border-color: var(--border-color-lighter);
+    
+    &:hover,
+    &:focus {
+      color: var(--text-color-placeholder);
+      background-color: var(--fill-color-blank);
+      border-color: var(--border-color-lighter);
+    }
+  }
+}
+
+// 按钮尺寸
+@mixin button-size($height, $padding, $font-size) {
+  height: $height;
+  padding: $padding;
+  font-size: $font-size;
+}
+
+// 按钮类型
+@mixin button-variant($color, $background, $border) {
+  color: $color;
+  background-color: $background;
+  border-color: $border;
+  
+  &:hover,
+  &:focus {
+    opacity: 0.9;
+  }
+  
+  &:active {
+    opacity: 0.8;
+  }
+}
+
+// 卡片样式
+@mixin card {
+  background-color: var(--bg-color-overlay);
+  border: 1px solid var(--border-color-lighter);
+  border-radius: var(--border-radius-base);
+  box-shadow: var(--box-shadow-light);
+  overflow: hidden;
+  color: var(--text-color-primary);
+  transition: var(--transition-base);
+  
+  &:hover {
+    box-shadow: var(--box-shadow-base);
+  }
+}
+
+// 输入框样式
+@mixin input-base {
+  -webkit-appearance: none;
+  background-color: var(--fill-color-blank);
+  background-image: none;
+  border: 1px solid var(--border-color-base);
+  border-radius: var(--border-radius-base);
+  box-sizing: border-box;
+  color: var(--text-color-regular);
+  display: inline-block;
+  font-size: inherit;
+  height: 32px;
+  line-height: 32px;
+  outline: none;
+  padding: 0 15px;
+  transition: var(--transition-border);
+  width: 100%;
+  
+  &::placeholder {
+    color: var(--text-color-placeholder);
+  }
+  
+  &:hover {
+    border-color: var(--border-color-base);
+  }
+  
+  &:focus {
+    border-color: var(--primary-color);
+    outline: none;
+  }
+  
+  &.is-disabled,
+  &:disabled {
+    background-color: var(--fill-color-light);
+    border-color: var(--border-color-lighter);
+    color: var(--text-color-placeholder);
+    cursor: not-allowed;
+    
+    &::placeholder {
+      color: var(--text-color-placeholder);
+    }
+  }
+}
+
+// 表格样式
+@mixin table-base {
+  width: 100%;
+  max-width: 100%;
+  background-color: transparent;
+  border-collapse: collapse;
+  border-spacing: 0;
+  
+  th,
+  td {
+    padding: var(--spacing-base) var(--spacing-medium);
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border-color-lighter);
+  }
+  
+  th {
+    background-color: var(--fill-color-light);
+    color: var(--text-color-primary);
+    font-weight: var(--font-weight-primary);
+  }
+  
+  tbody tr {
+    transition: var(--transition-base);
+    
+    &:hover {
+      background-color: var(--fill-color-light);
+    }
+  }
+}
+
+// 滚动条样式
+@mixin scrollbar($width: 6px, $track-color: var(--fill-color-light), $thumb-color: var(--border-color-base)) {
+  &::-webkit-scrollbar {
+    width: $width;
+    height: $width;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: $track-color;
+    border-radius: $width / 2;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: $thumb-color;
+    border-radius: $width / 2;
+    
+    &:hover {
+      background: var(--border-color-darker, #d4d7de);
+    }
+  }
+}
+
+// 加载动画
+@mixin loading-spinner($size: 20px, $color: var(--primary-color)) {
+  display: inline-block;
+  width: $size;
+  height: $size;
+  border: 2px solid var(--border-color-lighter);
+  border-radius: 50%;
+  border-top-color: $color;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// 渐变背景
+@mixin gradient-background($start-color, $end-color, $direction: to right) {
+  background: linear-gradient($direction, $start-color, $end-color);
+}
+
+// 阴影效果
+@mixin shadow($level: 1) {
+  @if $level == 1 {
+    box-shadow: var(--box-shadow-light);
+  } @else if $level == 2 {
+    box-shadow: var(--box-shadow-base);
+  } @else if $level == 3 {
+    box-shadow: var(--box-shadow-dark);
+  }
+}
+
+// 动画效果
+@mixin animate($name, $duration: 0.3s, $timing: ease, $delay: 0s, $iteration: 1, $direction: normal, $fill-mode: both) {
+  animation: $name $duration $timing $delay $iteration $direction $fill-mode;
+}
+
+// 淡入动画
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+// 淡出动画
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+// 滑入动画
+@keyframes slideInUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+// 滑出动画
+@keyframes slideOutDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+// 缩放动画
+@keyframes zoomIn {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+// 缩放出动画
+@keyframes zoomOut {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0);
+    opacity: 0;
+  }
+}

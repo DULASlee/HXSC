@@ -1,0 +1,21 @@
+using SmartConstruction.Contracts.Dtos.Base;
+
+namespace SmartConstruction.Contracts.Dtos.AuditLog;
+
+public class AuditLogDto : BaseDto
+{
+    public Guid TenantId { get; set; }
+    public string EventType { get; set; }
+    public DateTime EventTime { get; set; }
+    public Guid? UserId { get; set; }
+    public string? Username { get; set; }
+    public string? IpAddress { get; set; }
+    public string? UserAgent { get; set; }
+    public string? EntityType { get; set; }
+    public string? EntityId { get; set; }
+    public string? EntityName { get; set; }
+    public string? OldValues { get; set; }
+    public string? NewValues { get; set; }
+    public int Duration { get; set; }
+    public int PartitionKey { get; set; }
+}

@@ -1,0 +1,35 @@
+---
+description:
+globs:
+alwaysApply: true
+# .NET 8 + MASA 项目硬规则  
+禁止生成任何总结文档、测试文档、示例或 mock 代码。
+
+## 目录铁律
+| 层级 | 仅允许内容 |
+|---|---|
+| Domain/ | 实体、值对象、领域事件 |
+| Application/ | CQRS 命令/查询、DTO |
+| Infrastructure/ | EF 配置、仓储实现、外部服务 |
+| Api/ | Controller、Hub、Program.cs |
+| Web/ | Blazor 页面、组件、服务 |
+
+## 编码铁律
+- 所有 public 方法必须有 XML 注释 `<summary>`  
+- 所有方法必须 `async` 命名以 `Async` 结尾  
+- 所有实体必须继承 `Entity<T>` 或 `AggregateRoot<T>`  
+- 所有日志用 **Microsoft.Extensions.Logging.ILogger<T>** + **Serilog**   
+- 所有异常统一抛 `BusinessException`  
+- 禁止出现 `todo/fixme/mock/example/Sample` 字符串  
+- 禁止在代码里写 SQL，统一 EF Core  
+- 禁止生成任何 `*.md`、`*.txt`、`*.test.cs` 文件  
+
+## 提交铁律
+- 提交信息必须 `feat|fix|refactor|chore: <描述>`  
+- 每次 commit 前 `dotnet build` 必须 0 错误  
+- 禁止任何总结文档、测试文档、README 更新
+
+## 特殊指令
+@plan   → 先列 3 步计划再写代码  
+@clean  → 立即删除未引用/示例代码
+---

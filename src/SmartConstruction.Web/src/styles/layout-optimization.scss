@@ -1,0 +1,129 @@
+// =============================================
+// 布局优化样式
+// =============================================
+
+// 优化菜单宽度和内容区域比例
+:root {
+  // 调整菜单宽度为屏幕宽度的1/6
+  --sidebar-width: 200px;
+  --sidebar-collapsed-width: 60px;
+  
+  // 内容页副菜单宽度
+  --content-submenu-width: 180px;
+}
+
+// 优化侧边栏样式
+.app-sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  transition: width var(--transition-base);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 10;
+  
+  &.is-collapsed {
+    width: var(--sidebar-collapsed-width);
+  }
+}
+
+// 优化内容区域宽度
+.app-content {
+  width: calc(100% - var(--sidebar-width));
+  transition: width var(--transition-base);
+  
+  .app-page {
+    padding: 16px;
+    
+    // 内容页中的副菜单
+    .page-submenu {
+      width: var(--content-submenu-width);
+      flex-shrink: 0;
+      border-right: 1px solid var(--border-color-lighter);
+      padding-right: 16px;
+      margin-right: 16px;
+    }
+    
+    // 内容页中的主内容区
+    .page-main-content {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+}
+
+// 当侧边栏折叠时调整内容区域宽度
+.app-sidebar.is-collapsed + .app-content {
+  width: calc(100% - var(--sidebar-collapsed-width));
+}
+
+// 优化菜单项样式
+.el-menu {
+  border-right: none !important;
+  
+  .el-menu-item, .el-sub-menu__title {
+    height: 44px !important;
+    line-height: 44px !important;
+    font-size: 14px !important;
+    
+    .el-icon {
+      font-size: 16px !important;
+      width: 16px !important;
+      text-align: center !important;
+    }
+  }
+  
+  .el-sub-menu .el-menu-item {
+    height: 40px !important;
+    line-height: 40px !important;
+    font-size: 13px !important;
+  }
+}
+
+// 优化快速操作面板
+.quick-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 16px !important;
+  
+  .el-button {
+    height: 48px !important;
+    margin: 0 !important;
+    
+    .el-icon {
+      margin-right: 8px !important;
+    }
+  }
+}
+
+// 响应式优化
+@media (max-width: 1200px) {
+  :root {
+    --sidebar-width: 180px;
+    --content-submenu-width: 160px;
+  }
+}
+
+@media (max-width: 992px) {
+  :root {
+    --content-submenu-width: 140px;
+  }
+  
+  .app-page {
+    padding: 12px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-submenu {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color-lighter);
+    padding-right: 0 !important;
+    padding-bottom: 12px;
+    margin-right: 0 !important;
+    margin-bottom: 12px;
+  }
+  
+  .quick-actions {
+    grid-template-columns: 1fr !important;
+  }
+}

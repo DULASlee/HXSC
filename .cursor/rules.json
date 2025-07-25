@@ -1,0 +1,74 @@
+{
+    "$schema": "https://cursor.sh/rules/v1",
+    "projectName": "HXSmartConstruct.Baobab",
+    "rules": [
+      {
+        "id": "arch-layer-placement",
+        "description": "文件必须放在正确的架构层目录内，禁止跨层乱放。",
+        "severity": "error",
+        "filePattern": "**/*.{cs,csproj,json,yaml}",
+        "layerMap": {
+          "Domain": "src/*/Domain/**",
+          "Application": "src/*/Application/**",
+          "Infrastructure": "src/*/Infrastructure/**",
+          "Api": "src/*/Api/**",
+          "Shared": "src/Shared/**",
+          "Tests": "tests/**"
+        },
+        "check": {
+          "Domain": {
+            "allow": ["Entities/**", "ValueObjects/**", "Aggregates/**", "Events/**", "Specifications/**"]
+          },
+          "Application": {
+            "allow": ["Services/**", "UseCases/**", "Queries/**", "Commands/**", "Contracts/**", "Dtos/**"]
+          },
+          "Infrastructure": {
+            "allow": ["Persistence/**", "Repositories/**", "ExternalServices/**", "Mqtt/**", "Tcp/**"]
+          },
+          "Api": {
+            "allow": ["Controllers/**", "Extensions/**", "Middleware/**", "Hubs/**", "Program.cs", "Startup.cs"]
+          }
+        },
+        "message": "文件 {{file}} 必须放在 {{expectedLayer}} 目录下，当前为 {{currentLayer}}，请立即移动。"
+      },
+      {
+        "id": "no-duplicate-types",
+        "description": "禁止在不同层创建同名实体、服务类或接口。",
+        "severity": "error",
+        "scope": ["Domain", "Application", "Infrastructure"],
+        "forbidden": [
+          {
+            "type": "class",
+            "pattern": "^(Entity|Service|Repository|AggregateRoot)$"
+          }
+        ],
+        "message": "类型 {{typeName}} 已在 {{existingLayer}} 存在，禁止在 {{currentLayer}} 重复创建。"
+      },
+      {
+        "id": "no-orphan-code",
+        "description": "禁止创建与当前项目无关的测试、示例或空文件。",
+        "severity": "warn",
+        "patterns": ["**/Sample*", "**/Demo*", "**/Playground*", "**/Test*"],
+        "message": "检测到与项目无关的文件 {{file}}，请确认是否保留。"
+      },
+      {
+        "id": "confirm-deletion",
+        "description": "删除任何文件或代码块时必须二次确认。",
+        "severity": "error",
+        "actions": ["deleteFile", "deleteCodeBlock"],
+        "prompt": "你即将删除 {{itemName}}，请再次输入 'DELETE' 确认："
+      },
+      {
+        "rules": [
+          {
+            "id": "no-mock",
+            "description": "禁止生成任何 mock/example/fixme/todo 代码",
+            "severity": "error",
+            "pattern": "(\\bexample\\b|\\bmock\\b|\\btodo\\b|\\bfixme\\b)",
+            "message": "检测到示例代码，已阻止保存"
+          }
+        ]
+      }
+
+    ]
+  }
