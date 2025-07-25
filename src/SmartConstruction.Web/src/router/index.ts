@@ -76,68 +76,73 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  const userStore = useUserStore()
-  const menuStore = useMenuStore()
+  const userStore = useUserStore();
+  const menuStore = useMenuStore();
+  const isLoggedIn = userStore.isLoggedIn;
 
   // 1. 白名单路由直接放行
-  if (['/login', '/404', '/403'].includes(to.path)) {
-    return next()
+  if (to.path === '/login' || to.path === '/404' || to.path === '/403') {
+    return next();
   }
 
-  // 2. 检查 token 的强化逻辑
-  const token = userStore.token || localStorage.getItem('token')
-  if (!token) {
-    return next(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
+  // 2. 如果未登录，重定向到登录页
+  if (!isLoggedIn) {
+    const redirectPath = to.fullPath !== '/' ? `?redirect=${encodeURIComponent(to.fullPath)}` : '';
+    return next(`/login${redirectPath}`);
   }
 
-  // 3. 如果已登录但访问登录页，重定向到首页
-  if (to.path === '/login') {
-    return next('/')
-  }
+  // 3. 如果已登录，但系统尚未初始化，则执行初始化流程
+  if (!menuStore.isRoutesGenerated) {
+    try {
+      console.log('🚀 [Router Guard] 系统未初始化，开始执行初始化流程...');
+      
+      // 统一的初始化函数
+      await initializeSystem();
 
-  // 4. 如果路由已生成，直接放行
-  if (menuStore.isRoutesGenerated) {
-    // 额外检查目标路由是否存在
-    if (to.matched.length === 0) {
-      return next('/404')
+      console.log('✅ [Router Guard] 初始化成功，重定向到目标路由...');
+      return next({ ...to, replace: true });
+    } catch (error) {
+      console.error('❌ [Router Guard] 系统初始化失败:', error);
+      // 初始化失败时，userStore 内部会处理状态重置
+      return next('/login');
     }
-    return next()
   }
-
-  // 5. 初始化菜单和路由
-  try {
-    // 先确保用户信息已加载
-    if (!userStore.userInfo) {
-      await userStore.getUserInfo()
-    }
-
-    // 获取菜单路由
-    const { routes } = await menuStore.fetchUserMenus()
-
-    // 添加动态路由
-    if (routes?.length > 0) {
-      addRoutes(routes)
-    } else {
-      console.warn('用户无任何菜单权限')
-    }
-
-    // 标记路由已生成
-    menuStore.setRoutesGenerated(true)
-
-    // 重定向到原始请求
-    return next({ ...to, replace: true })
-  } catch (error) {
-    console.error('路由初始化失败:', error)
-    // refreshToken 失败时，userStore 内部已经处理了状态重置和页面跳转
-    // 这里不再需要调用 userStore.logout()，只需要确保跳转到登录页
-    const userStore = useUserStore()
-    if (userStore.token) {
-      // 如果还有token，说明可能不是认证问题，尝试登出一下
-      await userStore.resetUser()
-    }
-    return next(`/login?redirect=${encodeURIComponent(to.fullPath)}`)
+  
+  // 4. 如果已登录且已初始化，直接放行
+  // 额外检查目标路由是否存在
+  if (to.matched.length === 0) {
+    return next('/404');
   }
-})
+  return next();
+});
+
+/**
+ * @description 统一的系统初始化函数
+ */
+async function initializeSystem() {
+  const userStore = useUserStore();
+  const menuStore = useMenuStore();
+  
+  // 1. 获取用户信息（如果尚未获取）
+  if (!userStore.userInfo) {
+    await userStore.getUserInfo();
+  }
+  
+  // 2. 获取菜单并生成动态路由
+  const { routes } = await menuStore.fetchUserMenus();
+  if (routes?.length > 0) {
+    addRoutes(routes);
+    menuStore.setRoutesGenerated(true);
+  } else {
+    console.warn('用户无任何菜单权限，仅可访问静态路由');
+    // 即使没有菜单，也标记为已生成，避免重复初始化
+    menuStore.setRoutesGenerated(true);
+  }
+  
+  // 可以在这里扩展其他初始化逻辑，例如：
+  // await userStore.refreshPermissions();
+  // await dictionaryStore.fetchAllDictionaries();
+}
 
 /**
  * @description 重置路由 - 登出时清理动态路由

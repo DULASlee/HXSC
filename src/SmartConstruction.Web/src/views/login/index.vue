@@ -143,15 +143,14 @@
 <script setup lang="ts">
 import { ref, reactive, computed, nextTick } from 'vue'
 import { ElForm, ElMessage } from 'element-plus'
-import { useUserStore } from '@/stores/user'
-import { useAppStore } from '@/stores/app'
-import { getTenantList } from '@/api/modules/tenant'
-import { useApi } from '@/composables/useApi'
+import { useUserStore } from '../../stores/user'
+import { useAppStore } from '../../stores/app'
+import { getTenantList } from '../../api/modules/tenant'
+import { useApi } from '../../composables/useApi'
 import { Moon, Sunny, HomeFilled, OfficeBuilding, Setting } from '@element-plus/icons-vue'
-import type { LoginRequest, Tenant } from '@/types/global'
+import type { LoginRequest, Tenant } from '../../types/global'
 import type { FormInstance } from 'element-plus'
 import { useRouter } from 'vue-router'
-import { useMenuStore } from '@/stores/menu'
 
 const userStore = useUserStore()
 const appStore = useAppStore()
@@ -256,9 +255,8 @@ async function handleLogin() {
     });
 
     if (loginResult && loginResult.success) {
-      const menuStore = useMenuStore();
-      await menuStore.fetchUserMenus();
-      
+      // 登录成功后，不再负责加载菜单，只负责跳转
+      // 菜单和用户信息的加载，完全交给路由守卫的初始化流程
       ElMessage.success('登录成功');
       router.push('/');
     } else {

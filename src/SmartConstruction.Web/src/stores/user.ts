@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import router, { resetRouter } from '@/router';
 import { ElMessage } from 'element-plus';
 import { PermissionService } from '@/services/permission';
@@ -11,38 +11,23 @@ import {
 } from '@/api/modules/auth';
 import {
   getCurrentUser,
-  changePassword as changePasswordApi,
-  resetPassword as resetPasswordApi
 } from '@/api/modules/user';
 import type { LoginRequest, User, Tenant } from '@/types/global';
+import { getAuthState, setAuthState, clearAuthState, type AuthState } from '@/utils/authStorage';
 
 // =============================================
-// 手动状态持久化：应用启动时从 localStorage 恢复状态
+// 重构后的初始化流程
 // =============================================
-const getInitialState = (): UserState => {
-  // 尝试从 localStorage 恢复状态
-  try {
-    const storedState = localStorage.getItem('user');
-    if (storedState) {
-      const parsedState = JSON.parse(storedState);
-      return {
-        token: parsedState.token || '',
-        refreshTokenValue: parsedState.refreshTokenValue || parsedState.refreshToken || '', // 兼容旧键名
-        userInfo: parsedState.userInfo || null,
-        currentTenant: parsedState.currentTenant || null,
-        permissions: parsedState.permissions || [],
-        roles: parsedState.roles || [],
-        loginTime: parsedState.loginTime || null
-      };
-    }
-  } catch (error) {
-    console.error('从 localStorage 恢复用户状态失败:', error);
+const getInitialState = (): AuthState => {
+  const storedState = getAuthState();
+  if (storedState) {
+    return storedState;
   }
-
+  
   // 默认初始状态
   return {
     token: '',
-    refreshTokenValue: '', // 更新字段名
+    refreshTokenValue: '',
     userInfo: null,
     currentTenant: null,
     permissions: [],
@@ -51,16 +36,8 @@ const getInitialState = (): UserState => {
   };
 };
 
-
-interface UserState {
-  token: string;
-  refreshTokenValue: string; // 重命名避免与action冲突
-  userInfo: User | null;
-  currentTenant: Tenant | null;
-  permissions: string[];
-  roles: string[];
-  loginTime: number | null;
-}
+// [重要] UserState 接口现在直接复用 AuthState 接口
+type UserState = AuthState;
 
 export const useUserStore = defineStore('user', {
   state: (): UserState => getInitialState(),
@@ -84,188 +61,92 @@ export const useUserStore = defineStore('user', {
 
   actions: {
     /**
-     * 设置用户和令牌信息（由 SystemInit 调用）
+     * [内部] 统一更新内存和持久化状态
      */
-    setTokenAndUser(responseData: any) {
-      if (!responseData || !responseData.token) {
-        console.error('❌ [Auth] setTokenAndUser 失败: 无效的响应数据');
-        return;
-      }
-
+    _updateAuthState(partialState: Partial<UserState>) {
       // 1. 更新 Pinia State
-      this.token = responseData.token.accessToken;
-      this.refreshTokenValue = responseData.token.refreshToken;
-      this.loginTime = Date.now();
-      this.userInfo = responseData.user;
-      this.roles = responseData.user?.roles?.map((r:any) => r.code) || [];
-      this.permissions = responseData.permissions || [];
-      this.currentTenant = {
-        id: responseData.user?.tenantId,
-        code: 'DUMMY_CODE', // 登录接口似乎没返回，需要确认
-        name: responseData.user?.organizationName || '默认租户',
-        status: 1,
-        createdAt: new Date().toISOString(),
-        isolationMode: 'Shared',
-        logo: ''
+      Object.assign(this, partialState);
+      
+      // 2. 更新 localStorage
+      const currentState = {
+        token: this.token,
+        refreshTokenValue: this.refreshTokenValue,
+        userInfo: this.userInfo,
+        currentTenant: this.currentTenant,
+        permissions: this.permissions,
+        roles: this.roles,
+        loginTime: this.loginTime,
       };
-
-      // 2. 将核心状态持久化到 localStorage
-      try {
-        const persistentState = {
-          token: this.token,
-          refreshTokenValue: this.refreshTokenValue, // 保持键名统一
-          loginTime: this.loginTime,
-          currentTenant: this.currentTenant,
-          userInfo: this.userInfo,
-          permissions: this.permissions,
-          roles: this.roles
-        };
-        localStorage.setItem('user', JSON.stringify(persistentState));
-        console.log('💾 [Auth] 已将用户状态固化到 localStorage');
-      } catch (e) {
-        console.error('[持久化失败] 无法写入 user state 到 localStorage:', e);
-      }
+      setAuthState(currentState);
     },
 
     /**
-     * @description 用户登录 (现在委托给 SystemInit)
-     * @param {LoginRequest} loginForm - 登录表单
+     * @description 用户登录
      */
     async login(loginForm: LoginRequest) {
       try {
-        console.log('🚀 [Auth] 开始登录请求:', loginForm);
-
-        // http.ts 拦截器会处理外层包装，这里拿到的是完整的 ApiResult 对象
-        const response = await loginApi(loginForm) as any;
-        console.log('✅ [Auth] 登录接口返回的完整响应:', response);
-
-        // [最终修正] 从完整的 ApiResult 中解构出真正的核心数据 data
-        const responseData = response.data;
-        if (!responseData) {
-          throw new Error('登录响应中缺少核心 data 对象');
-        }
-
-        // 从核心数据中解析 token
-        const tokenStr = responseData.token;
-        const refreshTokenStr = responseData.refreshToken;
-
-        if (!tokenStr || !refreshTokenStr) {
-          console.error('❌ [Auth] 登录响应无效，缺少 token 或 refreshToken', responseData);
+        const responseData = await loginApi(loginForm) as any;
+        
+        if (!responseData || !responseData.token || !responseData.refreshToken) {
           throw new Error('登录响应中缺少有效的 token 或 refreshToken');
         }
 
-        // 1. 立即更新 Pinia State
-        this.token = tokenStr;
-        this.refreshTokenValue = refreshTokenStr;
-        this.loginTime = Date.now();
-        this.userInfo = responseData.user;
-        this.roles = responseData.user?.roles?.map((r:any) => r.code) || [];
-        this.permissions = responseData.permissions || [];
-        this.currentTenant = {
-          id: responseData.tenantId,
-          code: responseData.tenantCode || 'DEFAULT',
-          name: responseData.tenantName || '默认租户',
-          status: 1,
-          createdAt: new Date().toISOString(),
-          isolationMode: 'Shared',
-          logo: ''
+        const newUserState: UserState = {
+          token: responseData.token,
+          refreshTokenValue: responseData.refreshToken,
+          userInfo: responseData.user,
+          roles: responseData.user?.roles?.map((r:any) => r.code) || [],
+          permissions: responseData.permissions || [],
+          currentTenant: {
+            id: responseData.tenantId,
+            code: responseData.tenantCode || 'DEFAULT',
+            name: responseData.tenantName || '默认租户',
+            status: 1,
+            createdAt: new Date().toISOString(),
+            isolationMode: 'Shared',
+            logo: ''
+          },
+          loginTime: Date.now()
         };
-
-        // 2. 将核心状态持久化到 localStorage
-        try {
-          const persistentState = {
-            token: this.token,
-            refreshTokenValue: this.refreshTokenValue, // 保持键名统一
-            loginTime: this.loginTime,
-            currentTenant: this.currentTenant,
-            userInfo: this.userInfo,
-            permissions: this.permissions,
-            roles: this.roles
-          };
-          localStorage.setItem('user', JSON.stringify(persistentState));
-          console.log('💾 [Auth] 已将用户状态固化到 localStorage');
-        } catch (e) {
-          console.error('[持久化失败] 无法写入 user state 到 localStorage:', e);
-        }
+        
+        this._updateAuthState(newUserState);
 
         return { success: true };
       } catch (error: any) {
-        console.error('❌ [Auth] 登录失败:', error);
+        await this.resetUser();
         return { success: false, message: error.message || '登录失败' };
       }
     },
 
     /**
      * @description 刷新令牌
-     * @returns {Promise<string>} 新的 accessToken
      */
     async refreshToken(): Promise<string> {
-      console.log('🔄 [Auth] 尝试刷新令牌...');
       try {
         if (!this.refreshTokenValue) {
           throw new Error('无可用刷新令牌');
         }
 
-        // http.ts 拦截器会处理外层包装，这里拿到的是核心 data
         const response = await refreshTokenApi(this.refreshTokenValue);
 
         if (!response || !response.accessToken) {
           throw new Error('刷新令牌响应无效');
         }
-
-        const { accessToken, refreshToken: newRefreshToken } = response;
-
-        // 1. 更新 Pinia State
-        this.token = accessToken;
-        if (newRefreshToken) {
-          this.refreshTokenValue = newRefreshToken;
-        }
-        this.loginTime = Date.now();
-
-        // 2. 更新 localStorage
-        try {
-          const storedState = JSON.parse(localStorage.getItem('user') || '{}');
-          storedState.token = this.token;
-          storedState.refreshTokenValue = this.refreshTokenValue; // 保持键名统一
-          delete storedState.refreshToken; // 删除旧键名
-          storedState.loginTime = this.loginTime;
-          localStorage.setItem('user', JSON.stringify(storedState));
-          console.log('💾 [Auth] 刷新令牌后，已更新 localStorage');
-        } catch (e) {
-          console.error('[持久化失败] 刷新令牌后无法更新 localStorage:', e);
-        }
-
+        
+        this._updateAuthState({
+          token: response.accessToken,
+          refreshTokenValue: response.refreshToken || this.refreshTokenValue,
+          loginTime: Date.now()
+        });
+        
         console.log('✅ [Auth] 令牌刷新成功');
-        return accessToken;
+        return response.accessToken;
       } catch (error) {
-        console.error('❌ [Auth] 刷新令牌失败:', error);
-        // 刷新失败，直接重置用户状态并跳转登录，而不是再次调用logout()，避免死循环
-        this.resetUser();
-        router.push('/login');
-        // 必须抛出错误，以便 http.ts 中的调用者能捕获到失败
+        console.error('❌ [Auth] 刷新令牌失败，将重置用户状态');
+        await this.resetUser();
         throw error;
       }
     },
-
-    /**
-     * @description 获取当前用户信息
-     */
-      async getUserInfo() {
-        try {
-          const { data } = (await getCurrentUser()) as any;
-          if (data && data.user) {
-            this.userInfo = data.user;
-            this.permissions = data.permissions || [];
-            this.roles = data.user.roles?.map((r: any) => r.code) || [];
-          } else {
-            throw new Error('API返回的用户信息格式不正确');
-          }
-        } catch (error) {
-          console.error('获取用户信息失败:', error);
-          await this.logout();
-          throw error;
-        }
-      },
 
       /**
        * @description 用户登出
@@ -276,8 +157,7 @@ export const useUserStore = defineStore('user', {
         } catch (error) {
           console.error('登出接口调用失败:', error);
         } finally {
-          this.resetUser();
-          resetRouter();
+          await this.resetUser();
           router.push('/login');
         }
       },
@@ -285,28 +165,41 @@ export const useUserStore = defineStore('user', {
       /**
        * @description 重置用户所有状态
        */
-      resetUser() {
+      async resetUser() {
         // 1. 清理 localStorage
-        try {
-          localStorage.removeItem('user');
-        } catch (e) {
-          console.error('[持久化失败] 无法重置 user state 到 localStorage:', e);
-        }
+        clearAuthState();
 
         // 2. 重置 Pinia state
-        this.token = '';
-        this.refreshTokenValue = '';
-        this.userInfo = null;
-        this.currentTenant = null;
-        this.permissions = [];
-        this.roles = [];
-        this.loginTime = null;
+        this.$reset();
 
         // 3. 清理菜单状态
         const menuStore = useMenuStore();
         menuStore.clearMenus();
+        resetRouter();
 
         console.log('🧹 [Auth] 用户状态已完全重置');
+      },
+
+      /**
+       * @description 获取当前用户信息
+       */
+      async getUserInfo() {
+        try {
+          const { data } = (await getCurrentUser()) as any;
+          if (data && data.user) {
+            this._updateAuthState({
+              userInfo: data.user,
+              permissions: data.permissions || [],
+              roles: data.user.roles?.map((r: any) => r.code) || [],
+            });
+          } else {
+            throw new Error('API返回的用户信息格式不正确');
+          }
+        } catch (error) {
+          console.error('获取用户信息失败:', error);
+          await this.logout();
+          throw error;
+        }
       },
 
       /**
