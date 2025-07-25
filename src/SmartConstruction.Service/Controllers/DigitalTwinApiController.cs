@@ -234,7 +234,7 @@ namespace SmartConstruction.Service.Controllers
                 }
 
                 // 创建安全事故记录
-                var safetyIncident = new SmartConstruction.Contracts.Entities.SafetyIncident
+                var safetyIncident = new SafetyIncident
                 {
                     ProjectId = project.Id,
                     Type = request.AlertType,
