@@ -14,6 +14,7 @@ import {
 } from '@/api/modules/user';
 import type { LoginRequest, User, Tenant } from '@/types/global';
 import { getAuthState, setAuthState, clearAuthState, type AuthState } from '@/utils/authStorage';
+import { resetAllStores } from '@/stores';
 
 // =============================================
 // 重构后的初始化流程
@@ -157,7 +158,7 @@ export const useUserStore = defineStore('user', {
         } catch (error) {
           console.error('登出接口调用失败:', error);
         } finally {
-          await this.resetUser();
+          resetAllStores();
           router.push('/login');
         }
       },
@@ -172,9 +173,11 @@ export const useUserStore = defineStore('user', {
         // 2. 重置 Pinia state
         this.$reset();
 
-        // 3. 清理菜单状态
-        const menuStore = useMenuStore();
-        menuStore.clearMenus();
+        // [最终解耦] userStore 不再负责清理 menuStore，各自的状态由自己管理
+        // const menuStore = useMenuStore();
+        // menuStore.clearMenus();
+        
+        // 3. 重置路由是必要的，因为它依赖于权限
         resetRouter();
 
         console.log('🧹 [Auth] 用户状态已完全重置');

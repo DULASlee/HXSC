@@ -137,6 +137,7 @@ declare global {
   const refreshToken: typeof import('./api/modules/auth')['refreshToken']
   const refreshTokenApi: typeof import('./api/modules/auth')['refreshTokenApi']
   const removeOrganizationMember: typeof import('./api/modules/organization')['removeOrganizationMember']
+  const resetAllStores: typeof import('./stores/index')['resetAllStores']
   const resetPassword: typeof import('./api/modules/user')['resetPassword']
   const resolveComponent: typeof import('vue')['resolveComponent']
   const restoreTenantData: typeof import('./api/modules/tenant')['restoreTenantData']
